@@ -8,20 +8,24 @@ class MiniWebpack {
     this.config = config; // 配置文件
     this.modules = new Map(); // 存储所有模块，key是文件路径，value是模块对象
     this.graph = []; // 依赖图，存储所有模块的依赖关系，数组中存储的是模块对象
-    this.moduleId = 0; // 模块 ID 计数器，用于生成模块的唯一 ID
   }
   /**
    * 执行构建流程
    */
-  run() {
+  async run() {
     console.log('🎯 开始 Mini Webpack 构建流程\n');
-    // 阶段一：初始化
-    this.initialize();
-    // 阶段二：编译
-    this.compile();
-    // 阶段三：输出
-    this.emit();
-    console.log('🎉 构建成功完成！');
+    try {
+      // 阶段一：初始化
+      this.initialize();
+      // 阶段二：编译
+      await this.compile();
+      // 阶段三：输出
+      this.emit();
+      console.log('🎉 构建成功完成！');
+    } catch (error) {
+      console.error('❌ 构建失败:', error.message);
+      console.error(error.stack);
+    }
   }
   // 阶段一：初始化阶段
   initialize() {
@@ -42,23 +46,30 @@ class MiniWebpack {
     // 递归解析所有依赖
     await this.parseModule(entryPath);
 
+    console.log('📊 依赖图构建完成:');
+    this.graph.forEach((module, index) => {
+      console.log(`  ${index + 1}. ${module.id} -> [${module.dependencies.join(', ')}]`);
+    });
+
     console.log('✅ 编译阶段完成\n');
   }
   /**
    * 解析单个模块
    */
   async parseModule(filePath) {
-    if (this.modules.has(filePath)) {
-      return this.modules.get(filePath);
+    const absolutePath = path.resolve(filePath);
+    
+    if (this.modules.has(absolutePath)) {
+      return this.modules.get(absolutePath);
     }
 
-    console.log(`  🔍 解析模块: ${filePath}`);
+    console.log(`  🔍 解析模块: ${absolutePath}`);
 
     // 读取文件内容
-    const source = fs.readFileSync(filePath, 'utf-8');
+    const source = fs.readFileSync(absolutePath, 'utf-8');
 
     // 检查文件类型
-    const ext = path.extname(filePath);
+    const ext = path.extname(absolutePath);
     let dependencies = [];
     let transformedCode = source;
 
@@ -66,6 +77,16 @@ class MiniWebpack {
     const isJavaScriptFile = ['.js', '.jsx', '.ts', '.tsx'].includes(ext);
     if (!isJavaScriptFile) {
       dependencies = this.extractDependenciesSimple(source);
+      
+      // 对于 CSS 文件，生成动态插入样式的代码
+      if (ext === '.css') {
+        transformedCode = `
+// CSS 文件处理
+const style = document.createElement('style');
+style.textContent = ${JSON.stringify(source)};
+document.head.appendChild(style);
+`;
+      }
     } else {
       // 使用 Babel 解析 AST
       const ast = parse(source, {
@@ -92,13 +113,13 @@ class MiniWebpack {
 
 
     const module = {
-      id: this.moduleId++,
-      filePath: filePath,
+      id: absolutePath, // 使用绝对路径作为模块 ID
+      filePath: absolutePath, // 使用绝对路径
       source: transformedCode,
-      dependencies: dependencies.map(dep => this.resolveModulePath(filePath, dep))
+      dependencies: dependencies.map(dep => this.resolveModulePath(absolutePath, dep))
     };
 
-    this.modules.set(filePath, module);
+    this.modules.set(absolutePath, module);
     this.graph.push(module);
 
     // 递归解析依赖
@@ -227,12 +248,28 @@ class MiniWebpack {
    */
   generateBundle() {
     let modules = '';
-    let moduleMap = '';
 
-    // 生成模块映射
+    // 生成模块映射，直接使用文件路径作为 key
     this.modules.forEach((module) => {
-      modules += `${module.id}: function(module, exports, require) {\n${module.source}\n},\n`;
-      moduleMap += `"${module.filePath}": ${module.id},\n`;
+      // 将模块源码中的相对路径替换为绝对路径
+      let processedSource = module.source;
+      
+      // 替换 require 调用中的相对路径为绝对路径
+      module.dependencies.forEach(dep => {
+        const relativePath = path.relative(path.dirname(module.filePath), dep);
+        const patterns = [
+          `require("./${relativePath}")`,
+          `require('./${relativePath}')`,
+          `require("./${relativePath.replace(/\.js$/, '')}")`,
+          `require('./${relativePath.replace(/\.js$/, '')}')`
+        ];
+        
+        patterns.forEach(pattern => {
+          processedSource = processedSource.replace(pattern, `require("${dep}")`);
+        });
+      });
+      
+      modules += `"${module.id}": function(module, exports, require) {\n${processedSource}\n},\n`;
     });
 
     return `
@@ -264,11 +301,8 @@ class MiniWebpack {
     return module.exports;
   }
   
-  // 模块映射
-  var moduleMap = {${moduleMap}};
-  
   // 入口模块执行
-  return __webpack_require__("${this.config.entry}");
+  return __webpack_require__("${path.resolve(this.config.entry)}");
 })({
 ${modules}
 })`;
