@@ -197,7 +197,83 @@ class MiniWebpack {
 
     return path.resolve(path.dirname(currentPath), modulePath);
   }
-  emit() { }
+
+  /**
+   * 阶段三：输出阶段
+   */
+  emit() {
+    console.log('📦 阶段三：输出阶段');
+
+    // 生成 bundle 代码
+    const bundle = this.generateBundle();
+
+    // 确保输出目录存在
+    const outputDir = this.config.output.path;
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // 写入文件
+    const outputPath = path.join(outputDir, this.config.output.filename);
+    fs.writeFileSync(outputPath, bundle);
+
+    console.log('📁 输出文件:', outputPath);
+    console.log('📏 文件大小:', (bundle.length / 1024).toFixed(2) + ' KB');
+    console.log('✅ 构建完成！\n');
+  }
+
+  /**
+   * 生成最终的 bundle 代码
+   */
+  generateBundle() {
+    let modules = '';
+    let moduleMap = '';
+
+    // 生成模块映射
+    this.modules.forEach((module) => {
+      modules += `${module.id}: function(module, exports, require) {\n${module.source}\n},\n`;
+      moduleMap += `"${module.filePath}": ${module.id},\n`;
+    });
+
+    return `
+(function(modules) {
+  // 模块缓存
+  var installedModules = {};
+  
+  // require 函数实现
+  function __webpack_require__(moduleId) {
+    // 检查缓存
+    if (installedModules[moduleId]) {
+      return installedModules[moduleId].exports;
+    }
+    
+    // 创建新模块
+    var module = installedModules[moduleId] = {
+      id: moduleId,
+      loaded: false,
+      exports: {}
+    };
+    
+    // 执行模块
+    modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+    
+    // 标记为已加载
+    module.loaded = true;
+    
+    // 返回模块导出
+    return module.exports;
+  }
+  
+  // 模块映射
+  var moduleMap = {${moduleMap}};
+  
+  // 入口模块执行
+  return __webpack_require__("${this.config.entry}");
+})({
+${modules}
+})`;
+  }
+
 }
 
 module.exports = MiniWebpack;
