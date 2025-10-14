@@ -1,0 +1,38 @@
+# 使用github actions部署example 
+# 工作流很像是剧本，on是什么时候，jobs是干什么事情，jobs是可以多个同时进行，每个job都可以有多个步骤，步骤是按顺序执行的
+# 工作流名称
+name: 打包example
+on: push
+permissions:
+  contents: write
+  pages: write
+jobs:
+  npm-build:
+    name: npm-build工作
+    # 告诉github使用的服务器环境
+    runs-on: ubuntu-latest
+    steps:
+    # uses是表示一系列的step,这里表示使用actions/checkout@v4这个step
+    - name: 将仓库代码同步到当前服务器
+      uses: actions/checkout@v5
+    - name: 进入到example目录和项目打包
+      run: |
+        npm i -g pnpm
+        pnpm install
+        cd example
+        npm run build
+    - name: 登录docker
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+    - name: 构建docker镜像并推送到docker hub
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mini-webpack:latest
+    # - name: 部署example到github pages
+    #   uses: peaceiris/actions-gh-pages@v4
+    #   with:
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     publish_dir: ./example/dist

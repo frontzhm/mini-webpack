@@ -11,7 +11,7 @@ COPY pnpm-lock.yaml .
 COPY package.json .
 
 # 安装依赖（使用--frozen-lockfile保证一致性）
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # 复制源码并构建
 COPY . .
