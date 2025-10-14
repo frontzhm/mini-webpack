@@ -21,9 +21,18 @@ jobs:
         pnpm install
         cd example
         npm run build
-       
-    - name: 部署example到github pages
-      uses: peaceiris/actions-gh-pages@v4
+    - name: 登录docker
+      uses: docker/login-action@v3
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./example/dist
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}
+    - name: 构建docker镜像并推送到docker hub
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mini-webpack:latest
+    # - name: 部署example到github pages
+      # uses: peaceiris/actions-gh-pages@v4
+      # with:
+      #   github_token: ${{ secrets.GITHUB_TOKEN }}
+      #   publish_dir: ./example/dist
