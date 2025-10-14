@@ -18,7 +18,7 @@ jobs:
     - name: 进入到example目录和项目打包
       run: |
         cd example
-        npm build
+        npm run build
     - name: 部署example到github pages
       uses: peaceiris/actions-gh-pages@v4
       with:
