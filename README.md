@@ -1,6 +1,7 @@
 # Mini Webpack
 
 一个简化版的 Webpack 实现，用于学习和理解 Webpack 的核心工作原理。
+[查看示例页面](https://frontzhm.github.io/mini-webpack/)
 
 ## 🎯 项目目标
 
