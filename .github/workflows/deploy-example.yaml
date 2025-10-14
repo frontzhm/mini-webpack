@@ -17,6 +17,8 @@ jobs:
       uses: actions/checkout@v5
     - name: 进入到example目录和项目打包
       run: |
+        npm i -g pnpm
+        pnpm install
         cd example
         npm run build
     - name: 部署example到github pages
