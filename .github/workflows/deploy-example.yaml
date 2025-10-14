@@ -3,12 +3,15 @@
 # 工作流名称
 on: push
 jobs:
-  job1:
+  npm-build:
     # 告诉github使用的服务器环境
     runs-on: ubuntu-latest
     steps:
-    - run: echo "Hello, world!"
     - run: pwd
+    - run: npm --version
+    - run: cd example
+    - run: npm install
+    - run: npm run build
   job2:
     runs-on: windows-latest
     steps:
