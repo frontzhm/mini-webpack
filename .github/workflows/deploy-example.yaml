@@ -2,3 +2,11 @@
 # 工作流很像是剧本，on是什么时候，jobs是干什么事情，jobs是可以多个同时进行，每个job都可以有多个步骤，步骤是按顺序执行的
 # 工作流名称
 on: push
+jobs:
+  job1:
+    steps:
+    - run: echo "Hello, world!"
+    - run: pwd
+  job2:
+    steps:
+    - run: node --version
