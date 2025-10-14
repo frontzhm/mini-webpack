@@ -4,9 +4,12 @@
 on: push
 jobs:
   job1:
+    # 告诉github使用的服务器环境
+    runs-on: ubuntu-latest
     steps:
     - run: echo "Hello, world!"
     - run: pwd
   job2:
+    runs-on: windows-latest
     steps:
     - run: node --version
